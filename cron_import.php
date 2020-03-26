@@ -17,6 +17,8 @@ $options = get_option('oasis_mi_options');
 $api_key = $options['oasis_mi_api_key'];
 $selectedCategories = array_filter($options['oasis_mi_category_map']);
 
+$oasisCategories = get_oasis_categories($api_key);
+
 if ($api_key && $selectedCategories) {
     foreach (array_values($selectedCategories) as $oasisCategory) {
         $params = [
@@ -48,6 +50,16 @@ if ($api_key && $selectedCategories) {
                     $selectedCategory[] = $k;
                 }
             }
+            if (empty($selectedCategory)) {
+                foreach ($selectedCategories as $k => $v) {
+                    foreach($oasisCategories[$v] as $sub_v) {
+                        if (in_array($sub_v['id'], $firstProduct['categories_array'])) {
+                            $selectedCategory[] = $k;
+                        }
+                    }
+                }
+            }
+            
             upsert_model($model_id, $model, $selectedCategory, true);
         }
     }
