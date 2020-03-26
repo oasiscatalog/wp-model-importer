@@ -18,36 +18,38 @@ $api_key = $options['oasis_mi_api_key'];
 $selectedCategories = array_filter($options['oasis_mi_category_map']);
 
 if ($api_key && $selectedCategories) {
-    $params = [
-        'format'   => 'json',
-        'fieldset' => 'full',
-        'category' => implode(',', array_values($selectedCategories)),
-        'no_vat'   => 0,
-        'extend'   => 'is_visible',
-        'key'      => $api_key,
-    ];
+    foreach (array_values($selectedCategories) as $oasisCategory) {
+        $params = [
+            'format'   => 'json',
+            'fieldset' => 'full',
+            'category' => $oasisCategory,
+            'no_vat'   => 0,
+            'extend'   => 'is_visible',
+            'key'      => $api_key,
+        ];
 
-    $products = json_decode(
-        file_get_contents('https://api.oasiscatalog.com/v4/products?' . http_build_query($params)),
-        true
-    );
+        $products = json_decode(
+            file_get_contents('https://api.oasiscatalog.com/v4/products?' . http_build_query($params)),
+            true
+        );
 
-    $models = [];
-    foreach ($products as $product) {
-        $models[$product['group_id']][$product['id']] = $product;
-    }
-
-    foreach ($models as $model_id => $model) {
-        echo '[' . date('c') . '] Начало обработки модели ' . $model_id . PHP_EOL;
-        $selectedCategory = [];
-
-        $firstProduct = reset($model);
-        foreach ($selectedCategories as $k => $v) {
-            if (in_array($v, $firstProduct['categories_array'])) {
-                $selectedCategory[] = $k;
-            }
+        $models = [];
+        foreach ($products as $product) {
+            $models[$product['group_id']][$product['id']] = $product;
         }
-        upsert_model($model_id, $model, $selectedCategory, true);
+
+        foreach ($models as $model_id => $model) {
+            echo '[' . date('c') . '] Начало обработки модели ' . $model_id . PHP_EOL;
+            $selectedCategory = [];
+
+            $firstProduct = reset($model);
+            foreach ($selectedCategories as $k => $v) {
+                if (in_array($v, $firstProduct['categories_array'])) {
+                    $selectedCategory[] = $k;
+                }
+            }
+            upsert_model($model_id, $model, $selectedCategory, true);
+        }
     }
 }
 

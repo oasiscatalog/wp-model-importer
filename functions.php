@@ -34,6 +34,9 @@ function upsert_model($model_id, $model, $categories, $verbose = false)
                 break;
             }
         }
+        if (!$firstProduct) {
+            $firstProduct = reset($model);
+        }
     } else {
         $firstProduct = reset($model);
     }
