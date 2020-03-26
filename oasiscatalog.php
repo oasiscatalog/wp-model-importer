@@ -148,7 +148,7 @@ function get_oasis_categories_tree($tree, $parent_id, $level, $seleted)
     }
     if (isset($tree[$parent_id])) {
         foreach ($tree[$parent_id] as $cat) {
-            $result .= '<option value="' . $cat['id'] . '" ' . ($seleted == $cat['id'] ? 'selected' : '') . '>' . str_repeat('-',
+            $result .= '<option value="' . $cat['id'] . '" ' . ($seleted == $cat['id'] ? 'selected' : '') . '>' . str_repeat(' - ',
                     $level) . $cat['name'] . '</option>';
             $result .= get_oasis_categories_tree($tree, $cat['id'], $level + 1, $seleted);
         }
@@ -194,9 +194,12 @@ if (is_admin()) {
         // show error/update messages
         settings_errors('oasis_mi_messages');
         ?>
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
+
         <div class="wrap">
             <h1><?= esc_html('Настройка импорта моделей Oasis'); ?></h1>
-            <form action="options.php" method="post">
+            <form action="options.php" method="post" class="oasis-mi-form">
                 <?php
                 settings_fields('oasis_mi');
                 do_settings_sections('oasis_mi');
@@ -204,6 +207,11 @@ if (is_admin()) {
                 ?>
             </form>
         </div>
+        <script>
+            jQuery(document).ready(function() {
+                jQuery('.oasis-mi-form select').select2();
+            });
+        </script>
         <?php
     }
 }
