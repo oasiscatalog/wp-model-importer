@@ -56,13 +56,6 @@ if ($api_key && $selectedCategories) {
                 }
             }
 
-            if (empty($selectedCategory)) {
-                var_dump($oasisCategory);
-                var_dump($firstProduct);
-
-                die();
-            }
-
             upsert_model($model_id, $model, $selectedCategory, true);
         }
     }

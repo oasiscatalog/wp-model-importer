@@ -53,7 +53,7 @@ function upsert_model($model_id, $model, $categories, $verbose = false)
         return;
     }
 
-    if (empty($existProduct) || (!empty($existProduct) && $existProduct->post_modified != $firstProduct['updated_at'])) {
+    if (empty($existProduct) || (!empty($existProduct) && strtotime($existProduct->post_modified) < strtotime($firstProduct['updated_at']))) {
         $productAttributes = [];
         $existColor = false;
         foreach ($firstProduct['attributes'] as $key => $attribute) {
