@@ -46,7 +46,7 @@ if ($api_key && $selectedCategories) {
 
             $firstProduct = reset($model);
             foreach ($selectedCategories as $k => $v) {
-                if (in_array($v, $firstProduct['categories_array'])) {
+                if (in_array($v, $firstProduct['categories_array']) || in_array($v, $firstProduct['full_categories'])) {
                     $selectedCategory[] = $k;
                 }
             }
@@ -54,6 +54,13 @@ if ($api_key && $selectedCategories) {
                 foreach ($selectedCategories as $k => $v) {
                     $selectedCategory = recursiveCheckCategories($k, $v, $oasisCategories, $firstProduct['categories_array']);
                 }
+            }
+
+            if (empty($selectedCategory)) {
+                var_dump($oasisCategory);
+                var_dump($firstProduct);
+
+                die();
             }
 
             upsert_model($model_id, $model, $selectedCategory, true);

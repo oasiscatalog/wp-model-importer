@@ -194,7 +194,7 @@ function upsert_model($model_id, $model, $categories, $verbose = false)
 
         upsert_photo($firstProduct['images'], $productId, $productId);
         if ($verbose) {
-            echo '[' . date('c') . '] Добавлен товар арт. ' . $firstProduct['article'] . PHP_EOL;
+            echo '[' . date('c') . '] ' . ($existProduct ? 'Обновлен' : 'Добавлен') . ' товар арт. ' . $firstProduct['article'] . PHP_EOL;
         }
 
         if (count($model) > 1) {
@@ -279,7 +279,7 @@ function upsert_model($model_id, $model, $categories, $verbose = false)
                 upsert_photo([reset($item['images'])], $variationId, $productId);
 
                 if ($verbose) {
-                    echo '[' . date('c') . '] Добавлен вариант арт. ' . $item['article'] . PHP_EOL;
+                    echo '[' . date('c') . '] ' . ($existVariation ? 'Обновлен' : 'Добавлен') . ' вариант арт. ' . $item['article'] . PHP_EOL;
                 }
             }
         }
