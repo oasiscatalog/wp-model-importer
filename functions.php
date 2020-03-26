@@ -506,3 +506,18 @@ function oasis_mi_translite($name)
         ], $name);
     return $name;
 }
+
+function recursiveCheckCategories($wpCategoryId, $parentId, $oasisCategories, $productCategories)
+{
+    $result = [];
+    if (isset($oasisCategories[$parentId])) {
+        foreach ($oasisCategories[$parentId] as $sub_v) {
+            if (in_array($sub_v['id'], $productCategories)) {
+                $result[] = $wpCategoryId;
+            }
+            $result = array_merge($result,
+                recursiveCheckCategories($wpCategoryId, $sub_v['id'], $oasisCategories, $productCategories));
+        }
+    }
+    return $result;
+}

@@ -52,18 +52,15 @@ if ($api_key && $selectedCategories) {
             }
             if (empty($selectedCategory)) {
                 foreach ($selectedCategories as $k => $v) {
-                    foreach($oasisCategories[$v] as $sub_v) {
-                        if (in_array($sub_v['id'], $firstProduct['categories_array'])) {
-                            $selectedCategory[] = $k;
-                        }
-                    }
+                    $selectedCategory = recursiveCheckCategories($k, $v, $oasisCategories, $firstProduct['categories_array']);
                 }
             }
-            
+
             upsert_model($model_id, $model, $selectedCategory, true);
         }
     }
 }
+
 
 echo '[' . date('c') . '] Окончание обновления товаров' . PHP_EOL;
 
