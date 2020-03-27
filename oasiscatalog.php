@@ -16,6 +16,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+define('OASIS_MI_PATH', plugin_dir_path(__FILE__));
+
 /**
  * Проверка на наличие включенного Woocommerce при активации плагина
  */
@@ -193,12 +195,22 @@ if (is_admin()) {
 
         // show error/update messages
         settings_errors('oasis_mi_messages');
+
+        $options = get_option('oasis_mi_options');
         ?>
         <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 
         <div class="wrap">
             <h1><?= esc_html('Настройка импорта моделей Oasis'); ?></h1>
+            <?php if (!empty($options['oasis_mi_api_key'])) : ?>
+            <p>Для включения автоматического обновления каталога необходимо в панели управления Хостингом добавить crontab задачу:<br/>
+                <br/>
+                <code style="border: dashed 1px #333; border-radius: 4px; padding: 10px 20px;">php <?=OASIS_MI_PATH;?>cron_import.php</code>
+            </p>
+            <br/>
+            <?php endif; ?>
+
             <form action="options.php" method="post" class="oasis-mi-form">
                 <?php
                 settings_fields('oasis_mi');
@@ -252,7 +264,6 @@ if (is_admin()) {
      */
     function oasis_mi_update_action()
     {
-        define('OASIS_MI_PATH', plugin_dir_path(__FILE__));
         include_once(OASIS_MI_PATH . 'functions.php');
 
         if (empty($_REQUEST['ids'])) {
@@ -323,7 +334,7 @@ if (is_admin()) {
     add_action('admin_action_oasis_update', 'oasis_mi_update_action');
 
     /**
-     * 
+     *
      */
     function oasis_mi_update_message()
     {
@@ -331,9 +342,9 @@ if (is_admin()) {
         if ($message) {
             delete_option('oasis_mi_update_message');
             ?>
-                <div class="notice notice-success is-dismissible">
-                    <p><strong><?=$message;?></strong></p>
-                </div>
+            <div class="notice notice-success is-dismissible">
+                <p><strong><?= $message; ?></strong></p>
+            </div>
             <?php
         }
     }
