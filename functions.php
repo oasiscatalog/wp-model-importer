@@ -8,7 +8,7 @@
  * @param $categories
  * @param bool $verbose
  */
-function upsert_model($model_id, $model, $categories, $verbose = false)
+function upsert_model($model_id, $model, $categories, $verbose = false, $force = false)
 {
     $args = [
         'post_type'  => ['product'],
@@ -53,7 +53,7 @@ function upsert_model($model_id, $model, $categories, $verbose = false)
         return;
     }
 
-    if (empty($existProduct) || (!empty($existProduct) && strtotime($existProduct->post_modified) < strtotime($firstProduct['updated_at']))) {
+    if (empty($existProduct) || (!empty($existProduct) && strtotime($existProduct->post_modified) < strtotime($firstProduct['updated_at'])) || $force) {
         $productAttributes = [];
         $existColor = false;
         foreach ($firstProduct['attributes'] as $key => $attribute) {

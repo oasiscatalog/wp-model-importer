@@ -194,7 +194,7 @@ if (is_admin()) {
         // show error/update messages
         settings_errors('oasis_mi_messages');
         ?>
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet" />
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" rel="stylesheet"/>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.min.js"></script>
 
         <div class="wrap">
@@ -208,10 +208,135 @@ if (is_admin()) {
             </form>
         </div>
         <script>
-            jQuery(document).ready(function() {
+            jQuery(document).ready(function () {
                 jQuery('.oasis-mi-form select').select2();
             });
         </script>
         <?php
     }
+
+    /**
+     * @param $actions
+     * @param $post
+     * @return mixed
+     */
+    function oasis_mi_update_link($actions, $post)
+    {
+        if ($post->post_type != 'product') {
+            return $actions;
+        }
+
+        $post_status = (isset($_REQUEST['post_status']) ? $_REQUEST['post_status'] : false);
+        if (!empty($post_status)) {
+            if ($post_status == 'trash') {
+                return $actions;
+            }
+        }
+
+        $model_id = get_post_meta($post->ID, 'model_id');
+        if (empty($model_id)) {
+            return $actions;
+        }
+
+        $actions['oasis_update'] = '<span class="delete"><a href="' . wp_nonce_url(admin_url('edit.php?post_type=product&ids=' . $post->ID . '&action=oasis_update'),
+                'oasis_update_' . $post->ID) . '" title="Обновить товар из Oasiscatalog" rel="permalink">Обновить модель Oasiscatalog</a></span>';
+
+        return $actions;
+    }
+
+    add_filter('post_row_actions', 'oasis_mi_update_link', 10, 2);
+    add_filter('page_row_actions', 'oasis_mi_update_link', 10, 2);
+
+    /**
+     *
+     */
+    function oasis_mi_update_action()
+    {
+        define('OASIS_MI_PATH', plugin_dir_path(__FILE__));
+        include_once(OASIS_MI_PATH . 'functions.php');
+
+        if (empty($_REQUEST['ids'])) {
+            wp_die('Не выбраны модели для обновления!');
+        }
+
+        // Get the original page
+        $id = isset($_REQUEST['ids']) ? absint($_REQUEST['ids']) : '';
+
+        $options = get_option('oasis_mi_options');
+        $api_key = $options['oasis_mi_api_key'];
+        $selectedCategories = array_filter($options['oasis_mi_category_map']);
+
+        $sku = [];
+        $sku[] = reset(get_post_meta($id, '_sku'));
+
+        $variations = get_posts(['post_parent' => $id]);
+        if ($variations) {
+            foreach ($variations as $variation) {
+                $sku[] = reset(get_post_meta($variation->ID, '_sku'));
+            }
+        }
+
+        $params = [
+            'format'   => 'json',
+            'fieldset' => 'full',
+            'articles' => implode(",", $sku),
+            'no_vat'   => 0,
+            'extend'   => 'is_visible',
+            'key'      => $api_key,
+        ];
+
+        $products = json_decode(
+            file_get_contents('https://api.oasiscatalog.com/v4/products?' . http_build_query($params)),
+            true
+        );
+
+        $models = [];
+        foreach ($products as $product) {
+            $models[$product['group_id']][$product['id']] = $product;
+        }
+
+        ob_start();
+        foreach ($models as $model_id => $model) {
+            $selectedCategory = [];
+
+            $firstProduct = reset($model);
+            foreach ($selectedCategories as $k => $v) {
+                if (in_array($v, $firstProduct['categories_array']) || in_array($v, $firstProduct['full_categories'])) {
+                    $selectedCategory[] = $k;
+                }
+            }
+
+            upsert_model($model_id, $model, $selectedCategory, true, true);
+        }
+
+        add_option('oasis_mi_update_message', ob_get_contents());
+        ob_end_clean();
+
+        $post_type = 'product';
+        $url = add_query_arg([
+            'post_type' => $post_type,
+        ], 'edit.php');
+        wp_redirect($url);
+        exit();
+    }
+
+    add_action('admin_action_oasis_update', 'oasis_mi_update_action');
+
+    /**
+     * 
+     */
+    function oasis_mi_update_message()
+    {
+        $message = get_option('oasis_mi_update_message');
+        if ($message) {
+            delete_option('oasis_mi_update_message');
+            ?>
+                <div class="notice notice-success is-dismissible">
+                    <p><strong><?=$message;?></strong></p>
+                </div>
+            <?php
+        }
+    }
+
+    add_action('admin_notices', 'oasis_mi_update_message');
 }
