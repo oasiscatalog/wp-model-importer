@@ -280,7 +280,7 @@ if (is_admin()) {
         $sku = [];
         $sku[] = reset(get_post_meta($id, '_sku'));
 
-        $variations = get_posts(['post_parent' => $id]);
+        $variations = get_posts(['post_type' => 'product_variation', 'post_parent' => $id]);
         if ($variations) {
             foreach ($variations as $variation) {
                 $sku[] = reset(get_post_meta($variation->ID, '_sku'));
@@ -320,7 +320,9 @@ if (is_admin()) {
             upsert_model($model_id, $model, $selectedCategory, true, true);
         }
 
-        add_option('oasis_mi_update_message', ob_get_contents());
+        $result = ob_get_contents();
+
+        add_option('oasis_mi_update_message', nl2br($result));
         ob_end_clean();
 
         $post_type = 'product';
