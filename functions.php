@@ -26,6 +26,8 @@ function upsert_model($model_id, $model, $categories, $verbose = false, $force =
         $existProduct = reset($query->posts);
     }
 
+    $existProductStock = 0;
+    $existProductTotalStock = 0;
     if ($existProduct) {
         $allMetas = get_post_meta($existProduct->ID);
         foreach ($model as $item) {
@@ -34,6 +36,11 @@ function upsert_model($model_id, $model, $categories, $verbose = false, $force =
                 break;
             }
         }
+        $existProductStock = (int)$allMetas['_stock'][0];
+        if (isset($allMetas['_total_stock'])) {
+            $existProductTotalStock = (int)$allMetas['_total_stock'][0];
+        }
+
         if (!$firstProduct) {
             $firstProduct = reset($model);
         }
@@ -53,7 +60,16 @@ function upsert_model($model_id, $model, $categories, $verbose = false, $force =
         return;
     }
 
-    if (empty($existProduct) || (!empty($existProduct) && strtotime($existProduct->post_modified) < strtotime($firstProduct['updated_at'])) || $force) {
+    switch (true) {
+        case empty($existProduct):
+        case !empty($existProduct) && strtotime($existProduct->post_modified) < strtotime($firstProduct['updated_at']):
+        case $existProductStock != $firstProduct['total_stock']:
+        case $existProductTotalStock != $totalStock:
+            $force = true;
+            break;
+    }
+
+    if ($force) {
         $productAttributes = [];
         $existColor = false;
         foreach ($firstProduct['attributes'] as $key => $attribute) {
@@ -175,15 +191,16 @@ function upsert_model($model_id, $model, $categories, $verbose = false, $force =
                     '_stock_status'          => 'instock',
                     '_visibility'            => 'visible',
                     '_featured'              => 'no',
-                    '_downloadable'          => 'no',
-                    '_virtual'               => 'no',
-                    '_sold_individually'     => '',
-                    '_manage_stock'          => 'yes',
-                    '_backorders'            => 'no',
-                    '_stock'                 => $firstProduct['total_stock'],
-                    '_purchase_note'         => '',
-                    'total_sales'            => 0,
-                    '_product_attributes'    => $productAttributes,
+                    '_downloadable'       => 'no',
+                    '_virtual'            => 'no',
+                    '_sold_individually'  => '',
+                    '_manage_stock'       => 'yes',
+                    '_backorders'         => 'no',
+                    '_stock'              => $firstProduct['total_stock'],
+                    '_purchase_note'      => '',
+                    'total_sales'         => 0,
+                    '_product_attributes' => $productAttributes,
+                    '_total_stock'        => $totalStock,
                 ] + $addonMeta,
         ];
 
