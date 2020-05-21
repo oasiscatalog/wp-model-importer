@@ -17,9 +17,9 @@ $options = get_option('oasis_mi_options');
 $api_key = $options['oasis_mi_api_key'];
 $selectedCategories = array_filter($options['oasis_mi_category_map']);
 
-$oasisCategories = get_oasis_categories($api_key);
-
 if ($api_key && $selectedCategories) {
+    $oasisCategories = get_oasis_categories($api_key);
+
     foreach (array_values($selectedCategories) as $oasisCategory) {
         $params = [
             'format'   => 'json',
@@ -52,7 +52,8 @@ if ($api_key && $selectedCategories) {
             }
             if (empty($selectedCategory)) {
                 foreach ($selectedCategories as $k => $v) {
-                    $selectedCategory = recursiveCheckCategories($k, $v, $oasisCategories, $firstProduct['categories_array']);
+                    $selectedCategory = array_merge($selectedCategory,
+                        recursiveCheckCategories($k, $v, $oasisCategories, $firstProduct['categories_array']));
                 }
             }
 

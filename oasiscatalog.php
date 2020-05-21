@@ -30,6 +30,10 @@ function oasis_mi_activate()
     }
 }
 
+if (!function_exists('wp_get_current_user')) {
+    include(ABSPATH . "wp-includes/pluggable.php");
+}
+
 /**
  * custom option and settings
  */
@@ -204,11 +208,13 @@ if (is_admin()) {
         <div class="wrap">
             <h1><?= esc_html('Настройка импорта моделей Oasis'); ?></h1>
             <?php if (!empty($options['oasis_mi_api_key'])) : ?>
-            <p>Для включения автоматического обновления каталога необходимо в панели управления Хостингом добавить crontab задачу:<br/>
+                <p>Для включения автоматического обновления каталога необходимо в панели управления Хостингом добавить
+                    crontab задачу:<br/>
+                    <br/>
+                    <code style="border: dashed 1px #333; border-radius: 4px; padding: 10px 20px;">php <?= OASIS_MI_PATH; ?>
+                        cron_import.php</code>
+                </p>
                 <br/>
-                <code style="border: dashed 1px #333; border-radius: 4px; padding: 10px 20px;">php <?=OASIS_MI_PATH;?>cron_import.php</code>
-            </p>
-            <br/>
             <?php endif; ?>
 
             <form action="options.php" method="post" class="oasis-mi-form">
@@ -276,6 +282,7 @@ if (is_admin()) {
         $options = get_option('oasis_mi_options');
         $api_key = $options['oasis_mi_api_key'];
         $selectedCategories = array_filter($options['oasis_mi_category_map']);
+        $oasisCategories = get_oasis_categories($api_key);
 
         $sku = [];
         $sku[] = reset(get_post_meta($id, '_sku'));
@@ -317,6 +324,12 @@ if (is_admin()) {
                 }
             }
 
+            if (empty($selectedCategory)) {
+                foreach ($selectedCategories as $k => $v) {
+                    $selectedCategory = array_merge($selectedCategory,
+                        recursiveCheckCategories($k, $v, $oasisCategories, $firstProduct['categories_array']));
+                }
+            }
             upsert_model($model_id, $model, $selectedCategory, true, true);
         }
 
@@ -352,4 +365,186 @@ if (is_admin()) {
     }
 
     add_action('admin_notices', 'oasis_mi_update_message');
+
+    /**
+     * @param $actions
+     * @param $post
+     * @return mixed
+     */
+    function oasis_mi_update_category_link($actions, $term)
+    {
+        if ($term->taxonomy != 'product_cat') {
+            return $actions;
+        }
+
+        $options = get_option('oasis_mi_options');
+        $selectedCategories = array_filter($options['oasis_mi_category_map']);
+
+        if (empty($selectedCategories) || !isset($selectedCategories[$term->term_id])) {
+            return $actions;
+        }
+
+
+        $actions['oasis_update_category'] = '<span class="delete"><a href="' . wp_nonce_url(admin_url('admin.php?tag_ID=' . $term->term_id . '&page=oasis-update-category'),
+                'oasis_update_category' . $term->term_id) . '" title="Обновить товары из Oasiscatalog для этой категории" rel="permalink">Обновить категорию Oasiscatalog</a></span>';
+
+        return $actions;
+    }
+
+    add_filter('product_cat_row_actions', 'oasis_mi_update_category_link', 10, 2);
+
+    /**
+     *
+     */
+    function oasis_mi_oasis_update_category()
+    {
+        include_once(OASIS_MI_PATH . 'functions.php');
+
+        if (empty($_REQUEST['tag_ID'])) {
+            wp_die('Не выбрана категория для обновления!');
+        }
+
+        $options = get_option('oasis_mi_options');
+        $api_key = $options['oasis_mi_api_key'];
+        $selectedCategories = array_filter($options['oasis_mi_category_map']);
+
+        $models = $oasisCategories = [];
+
+        if ($api_key && $selectedCategories) {
+
+            $oasisCategories = get_oasis_categories($api_key);
+
+            $oasisCategory = $selectedCategories[$_REQUEST['tag_ID']];
+            $params = [
+                'format'   => 'json',
+                'fieldset' => 'full',
+                'category' => $oasisCategory,
+                'no_vat'   => 0,
+                'extend'   => 'is_visible',
+                'key'      => $api_key,
+            ];
+
+            $products = json_decode(
+                file_get_contents('https://api.oasiscatalog.com/v4/products?' . http_build_query($params)),
+                true
+            );
+
+
+            foreach ($products as $product) {
+                $models[$product['group_id']][$product['id']] = $product;
+            }
+        }
+
+
+        $tmpfname = tempnam(sys_get_temp_dir(), "cat");
+        file_put_contents($tmpfname, json_encode(['categories' => $oasisCategories, 'models' => $models]));
+
+        $term = get_term($_REQUEST['tag_ID'], 'product_cat');
+        ?>
+        <div class="wrap">
+            <h1><?= esc_html('Импорт товаров Oasis для категории "' . $term->name . '"'); ?></h1>
+
+            <div class="oasis-content">
+                Начат процесс обновления категории...<br/>
+            </div>
+        </div>
+        <script>
+            var uniqname = '<?=$tmpfname;?>';
+            jQuery(document).ready(function () {
+                setTimeout(function () {
+                    var step = 0;
+                    var total = <?= count($models);?>;
+
+                    function getNextStep() {
+                        jQuery.ajax({
+                            type: "POST",
+                            url: ajaxurl,
+                            data: {'action': 'oasis_update_category_ajax', 'file': uniqname, 'step': step},
+                            async: true
+                        }).done(function (msg) {
+                            if (step <= total) {
+                                jQuery('.oasis-content').append(msg);
+                                step = step + 1;
+                                getNextStep();
+                            }
+                        });
+                    }
+
+                    getNextStep();
+
+                }, 3000);
+            });
+        </script>
+        <?php
+    }
+
+    add_submenu_page(
+        null,
+        'oasis-update-category',
+        'oasis-update-category',
+        'manage_categories',
+        'oasis-update-category',
+        'oasis_mi_oasis_update_category'
+    );
+
+    /**
+     *
+     */
+    function oasis_mi_oasis_update_category_ajax()
+    {
+        include_once(OASIS_MI_PATH . 'functions.php');
+
+        if (empty($_REQUEST['file'])) {
+            wp_die('Не выбрана категория для обновления!');
+        }
+
+        if (substr_count($_REQUEST['file'], sys_get_temp_dir()) == 0) {
+            wp_die('Не выбран файл для обновления!');
+        }
+
+        $data = json_decode(file_get_contents($_REQUEST['file']), true);
+
+        $oasisCategories = $data['categories'];
+        $models = $data['models'];
+
+        $options = get_option('oasis_mi_options');
+        $selectedCategories = array_filter($options['oasis_mi_category_map']);
+
+        $keys = array_keys($models);
+
+        if (isset($keys[$_REQUEST['step']])) {
+            $model_id = $keys[$_REQUEST['step']];
+            $model = $models[$model_id];
+
+            ob_start();
+            echo '[' . date('c') . '] Начало обработки модели ' . $model_id . PHP_EOL;
+            $selectedCategory = [];
+
+            $firstProduct = reset($model);
+            foreach ($selectedCategories as $k => $v) {
+                if (in_array($v, $firstProduct['categories_array']) || in_array($v, $firstProduct['full_categories'])) {
+                    $selectedCategory[] = $k;
+                }
+            }
+            if (empty($selectedCategory)) {
+                foreach ($selectedCategories as $k => $v) {
+                    $selectedCategory = array_merge($selectedCategory,
+                        recursiveCheckCategories($k, $v, $oasisCategories, $firstProduct['categories_array']));
+                }
+            }
+
+            upsert_model($model_id, $model, $selectedCategory, true);
+        } else {
+            echo 'Обновление завершено.' . PHP_EOL;
+            unlink($_REQUEST['file']);
+        }
+
+        $result = ob_get_contents();
+        ob_end_clean();
+
+        echo nl2br($result);
+        exit();
+    }
+
+    add_action('wp_ajax_oasis_update_category_ajax', 'oasis_mi_oasis_update_category_ajax');
 }
