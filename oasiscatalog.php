@@ -211,8 +211,7 @@ if (is_admin()) {
                 <p>Для включения автоматического обновления каталога необходимо в панели управления Хостингом добавить
                     crontab задачу:<br/>
                     <br/>
-                    <code style="border: dashed 1px #333; border-radius: 4px; padding: 10px 20px;">php <?= OASIS_MI_PATH; ?>
-                        cron_import.php</code>
+                    <code style="border: dashed 1px #333; border-radius: 4px; padding: 10px 20px;">php <?= OASIS_MI_PATH; ?>cron_import.php</code>
                 </p>
                 <br/>
             <?php endif; ?>
