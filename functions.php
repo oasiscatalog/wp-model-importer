@@ -293,7 +293,9 @@ function upsert_model($model_id, $model, $categories, $verbose = false, $force =
                 ];
 
                 $variationId = wp_insert_post($variationParams);
-                upsert_photo([reset($item['images'])], $variationId, $productId);
+
+                // upsert_photo([reset($item['images'])], $variationId, $productId);
+                upsert_photo($item['images'], $variationId, $productId);
 
                 if ($verbose) {
                     echo '[' . date('c') . '] ' . ($existVariation ? 'Обновлен' : 'Добавлен') . ' вариант арт. ' . $item['article'] . PHP_EOL;

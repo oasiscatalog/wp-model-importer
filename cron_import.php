@@ -11,16 +11,26 @@ define('OASIS_MI_VERSION', '1.0');
 
 echo '[' . date('c') . '] Начало обновления товаров' . PHP_EOL;
 
+$selectedUserCategory = null;
+if (isset($argv[1])) {
+    $selectedUserCategory = intval($argv[1]);
+}
+
 include_once(OASIS_MI_PATH . 'functions.php');
 
 $options = get_option('oasis_mi_options');
 $api_key = $options['oasis_mi_api_key'];
 $selectedCategories = array_filter($options['oasis_mi_category_map']);
 
+$loopArray = array_values($selectedCategories);
+if ($selectedUserCategory) {
+    $loopArray = [$selectedUserCategory];
+}
+
 if ($api_key && $selectedCategories) {
     $oasisCategories = get_oasis_categories($api_key);
 
-    foreach (array_values($selectedCategories) as $oasisCategory) {
+    foreach ($loopArray as $oasisCategory) {
         $params = [
             'format'   => 'json',
             'fieldset' => 'full',
@@ -40,6 +50,8 @@ if ($api_key && $selectedCategories) {
             $models[$product['group_id']][$product['id']] = $product;
         }
 
+        $total = count(array_keys($models));
+        $count = 0;
         foreach ($models as $model_id => $model) {
             echo '[' . date('c') . '] Начало обработки модели ' . $model_id . PHP_EOL;
             $selectedCategory = [];
@@ -58,6 +70,8 @@ if ($api_key && $selectedCategories) {
             }
 
             upsert_model($model_id, $model, $selectedCategory, true);
+            $count++;
+            echo '[' . date('c') . '] Done  ' . $count . ' from ' . $total . PHP_EOL;
         }
     }
 }
